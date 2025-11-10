@@ -376,82 +376,83 @@ body{
 
 <script>
 
-// --- CÓDIGO DE SEGURANÇA CHAVE SECRETA (SIMPLES E UNIVERSAL) ---
+// --- CÓDIGO DE SEGURANÇA v2 (MAIS ROBUSTO E CORRIGIDO) ---
 
-const CHAVE_SECRETA_ESPERADA = "TECLADO_SECRETO_2025"; 
-const CHAVE_ACESSO_LOCAL = "teclado_access_token";
-const TEMPO_VALIDADE_DIAS = 366; 
+// 1. CONFIGURAÇÃO DAS CHAVES E VALIDADES
+const CHAVES_VALIDAS = {
+  "TECLADO_SECRETO_2025": 366, // Chave principal, concede acesso por 1 ano.
+  "ACESSO_30_DIAS": 30         // Nova chave, concede acesso por 30 dias.
+};
+const CHAVE_ACESSO_LOCAL = "teclado_access_token"; // Nome do token salvo no navegador.
 
-// Pega os parâmetros da URL. Verifica 'key' e 'chave'.
+// 2. LEITURA DA CHAVE NA URL
 const urlParams = new URLSearchParams(window.location.search);
 const chaveRecebida = urlParams.get('key') || urlParams.get('chave');
 
 let acessoValidado = false;
 
-// 1. TENTA VALIDAR PELO ARMAZENAMENTO LOCAL (ACESSOS SUBSEQUENTES)
-try {
-    const tokenSalvo = localStorage.getItem(CHAVE_ACESSO_LOCAL);
-    if (tokenSalvo) {
-        const dataExpiracao = new Date(JSON.parse(tokenSalvo).exp);
-        
-        if (dataExpiracao > new Date()) {
-            acessoValidado = true;
-        } else {
-            // Token expirado, remove e exige nova validação
-            localStorage.removeItem(CHAVE_ACESSO_LOCAL); 
-        }
-    }
-} catch (e) {}
+// 3. LÓGICA DE VALIDAÇÃO (ORDEM CORRIGIDA)
 
-// 2. SE NÃO VALIDADO, TENTA VALIDAR PELA CHAVE SECRETA (PRIMEIRO ACESSO)
-if (!acessoValidado) {
-    if (chaveRecebida === CHAVE_SECRETA_ESPERADA) {
-        
-        // ** SEGREDO: SALVAR O REGISTRO DO DISPOSITIVO **
-        const dataExpiracao = new Date();
-        dataExpiracao.setDate(dataExpiracao.getDate() + TEMPO_VALIDADE_DIAS);
-        const novoToken = { validado: true, exp: dataExpiracao.toISOString() };
-        localStorage.setItem(CHAVE_ACESSO_LOCAL, JSON.stringify(novoToken));
-        
-        acessoValidado = true;
+// ETAPA A: Tenta validar com a chave da URL primeiro (MAIS IMPORTANTE)
+// Se uma chave foi passada na URL, ela tem prioridade sobre qualquer token antigo.
+if (chaveRecebida && Object.keys(CHAVES_VALIDAS).includes(chaveRecebida)) {
+    
+    // Pega os dias de validade correspondentes à chave.
+    const diasDeValidade = CHAVES_VALIDAS[chaveRecebida];
 
-        // AÇÃO 3: LIMPEZA DA URL E RECARGA (REMOVIDO CÓDIGO DE RECARGA ANTIGO)
-        // A limpeza ocorrerá no bloco abaixo para evitar duplicação.
-    }
+    // Calcula a nova data de expiração.
+    const dataExpiracao = new Date();
+    dataExpiracao.setDate(dataExpiracao.getDate() + diasDeValidade);
+    
+    // Cria e salva (ou sobrescreve) o token no navegador.
+    const novoToken = { validado: true, exp: dataExpiracao.toISOString() };
+    localStorage.setItem(CHAVE_ACESSO_LOCAL, JSON.stringify(novoToken));
+    
+    // Libera o acesso.
+    acessoValidado = true;
+    console.log(`Acesso validado via URL com a chave '${chaveRecebida}'. Validade: ${diasDeValidade} dias.`);
 }
 
-// ----------------------------------------------------------------------
-// NOVO BLOCO: LIMPEZA DA URL (EXECUTAR SEMPRE QUE A CHAVE ESTIVER PRESENTE)
-// Esta lógica garante que a URL seja limpa *após* a validação, mesmo que
-// o acesso já estivesse validado pelo localStorage, mas a chave foi reenviada.
-// ----------------------------------------------------------------------
+// ETAPA B: Se não validou pela URL, tenta validar pelo token já salvo no navegador.
+if (!acessoValidado) {
+    try {
+        const tokenSalvo = localStorage.getItem(CHAVE_ACESSO_LOCAL);
+        if (tokenSalvo) {
+            const dataExpiracao = new Date(JSON.parse(tokenSalvo).exp);
+            
+            // Se o token salvo ainda é válido, libera o acesso.
+            if (dataExpiracao > new Date()) {
+                acessoValidado = true;
+                console.log("Acesso validado via token local existente.");
+            } else {
+                // Se o token expirou, remove para não atrapalhar futuras validações.
+                localStorage.removeItem(CHAVE_ACESSO_LOCAL);
+                console.log("Token local expirado foi removido.");
+            }
+        }
+    } catch (e) { /* Ignora erros */ }
+}
+
+// 4. LIMPEZA DA URL (Executa sempre que uma chave for encontrada)
 if (chaveRecebida) {
     const url = new URL(window.location.href);
-    
-    // Constrói a URL limpa, usando apenas a origem, o caminho e o hash.
-    // Isso descarta completamente o search (?key=...) e qualquer outro parâmetro.
     const novaUrlLimpa = url.origin + url.pathname + url.hash; 
-
-    // Atualiza a URL no histórico SEM recarregar a página (Melhor UX)
     window.history.replaceState({}, document.title, novaUrlLimpa);
-
-    console.log(`Chave detectada e removida da URL: ${chaveRecebida}`);
 }
 
-
-// 3. BLOQUEIO FINAL: SE AINDA NÃO VALIDOU, BLOQUEIA O JOGO.
+// 5. BLOQUEIO FINAL
+// Se, após todas as tentativas, o acesso não foi validado, bloqueia a página.
 if (!acessoValidado) {
     document.body.innerHTML = '<div style="text-align: center; padding-top: 50px;">' +
                                  '<h1>⛔ Acesso Negado</h1>' +
-                                 '<p>Conteúdo exclusivo. Acesse a lição na Hotmart para liberar o acesso.</p>' +
+                                 '<p>Conteúdo exclusivo. Utilize o link de acesso correto para liberar o teclado.</p>' +
                                  '</div>';
     
-    // Impede que o restante do script (código do jogo) seja executado
-    throw new Error('Acesso não autorizado. Chave inválida ou ausente.'); 
+    throw new Error('Acesso não autorizado. Chave inválida, ausente ou expirada.'); 
 }
 
-// O restante do código do teclado será executado aqui SOMENTE se a chave for válida.
-// O seu código do teclado vem APÓS este bloco.
+// O restante do código do teclado será executado aqui SOMENTE se o acesso for validado.
+
 
 /* ==========================================================================
    CONFIGURAÇÃO INICIAL E VARIÁVEIS
@@ -1143,6 +1144,7 @@ statusBox.textContent='Modo: Falante — pressione uma tecla ou clique.';
 
 </body>
 </html>
+
 
 
 
