@@ -376,81 +376,477 @@ body{
 
 <script>
 
-// --- CÓDIGO DE SEGURANÇA CHAVE SECRETA (SIMPLES E UNIVERSAL) ---
+ <!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Teclado Infantil — Falante & Caça</title>
+<style>
+/* ==========================================================================
+   CONFIGURAÇÃO DE VARIÁVEIS E ESTILOS GLOBAIS
+   ========================================================================== */
+:root {
+  --bg: #bfe0ff; /* Cor de fundo principal (azul claro) */
+  --panel: #ffffff; /* Cor de fundo do painel do teclado (branco) */
+  --key: #ffd54a; /* Cor padrão das teclas (amarelo) */
+  --key-shadow: #f0b300; /* Cor da sombra das teclas (amarelo escuro) */
+  --accent: #8b63f3; /* Cor de destaque (roxo) */
+  --purple: #9b6ef7; /* Cor roxa principal para botões e detalhes */
+}
 
-const CHAVE_SECRETA_ESPERADA = "TECLADO_SECRETO_2025"; 
-const CHAVE_ACESSO_LOCAL = "teclado_access_token";
-const TEMPO_VALIDADE_DIAS = 366; 
+body{
+  margin:0;
+  font-family: "Comic Sans MS", "Trebuchet MS", Arial, sans-serif; 
+  background: var(--bg);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:22px;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
 
-// Pega os parâmetros da URL. Verifica 'key' e 'chave'.
+/* ==========================================================================
+   ESTILOS DA BARRA SUPERIOR (TOPBAR)
+   ========================================================================== */
+.topbar { 
+  width: 100%; 
+  max-width:1100px; 
+  display:flex; 
+  justify-content:space-between; 
+  align-items:center; 
+  gap:12px; 
+  margin-bottom:18px; 
+  flex-wrap:wrap; 
+}
+
+.modes { display:flex; gap:12px; flex-wrap:wrap; }
+.mode-btn { 
+  background: linear-gradient(0deg,#bda8ff,#cdb8ff); 
+  padding:10px 18px; 
+  border-radius:10px; 
+  color:white; 
+  font-weight:700; 
+  border:none; 
+  cursor:pointer; 
+  box-shadow: 0 6px rgba(0,0,0,0.08); 
+  transition: all 0.1s ease;
+}
+.mode-btn.active { 
+  background: linear-gradient(0deg,var(--purple),#b894ff); 
+  box-shadow:0 8px rgba(0,0,0,0.12); 
+  transform: translateY(-2px);
+}
+
+.controls-right { 
+  display:flex; 
+  align-items:center; 
+  gap:14px; 
+  flex-wrap:wrap; 
+}
+.activity-btn { 
+  background: var(--purple); 
+  color: white; 
+  padding:12px 16px; 
+  border-radius:8px; 
+  border:none; 
+  font-weight:700; 
+  cursor:pointer; 
+  transition: background 0.1s ease;
+}
+
+/* ==========================================================================
+   ESTILOS DO DISPLAY (VISOR)
+   ========================================================================== */
+#display { 
+  width: 100%; 
+  max-width:1100px; 
+  margin: 6px 0 18px 0; 
+  display:flex; 
+  justify-content:center; 
+  align-items:center; 
+}
+.display-box { 
+  background: linear-gradient(180deg,#fff,#f6f0ff); 
+  padding:18px 36px; 
+  border-radius:18px; 
+  box-shadow: 0 10px 30px rgba(0,0,0,0.12); 
+  font-size:34px; 
+  font-weight:700; 
+  color:#222; 
+  min-width:420px; 
+  text-align:center; 
+  cursor:text; 
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* ==========================================================================
+   ESTILOS DO PAINEL DO TECLADO E TECLAS
+   ========================================================================== */
+.keyboard-panel { 
+  width:100%; 
+  max-width:1100px; 
+  background: var(--panel); 
+  border-radius:18px; 
+  padding:26px; 
+  box-shadow: 0 14px 30px rgba(0,0,0,0.12); 
+  overflow-x:auto; 
+}
+.row { 
+  display:flex; 
+  justify-content:center; 
+  gap:8px; 
+  margin:10px 0; 
+  flex-wrap:wrap;
+}
+.key { 
+  background: var(--key); 
+  border-radius:10px; 
+  width:64px; 
+  height:64px; 
+  display:flex; 
+  align-items:center; 
+  justify-content:center; 
+  font-weight:800; 
+  font-size:18px; 
+  color:#222; 
+  border:none; 
+  box-shadow: 0 6px var(--key-shadow); 
+  cursor:pointer; 
+  user-select:none; 
+  transition: transform 0.09s ease, box-shadow 0.09s; 
+}
+.key.space { width: 300px; }
+.key.playing { 
+  transform: translateY(6px); 
+  box-shadow: 0 0 rgba(0,0,0,0.06); 
+  background: #ff9f1a; 
+  color: white; 
+}
+
+/* ==========================================================================
+   FEEDBACK + CRONÔMETRO + BOTÃO PARAR
+   ========================================================================== */
+.feedback { 
+  margin-top:14px; 
+  display:flex; 
+  justify-content:space-between; 
+  align-items:center; 
+  gap:12px; 
+  max-width:1100px; 
+  width:100%; 
+}
+.feedback .status { 
+  background: linear-gradient(180deg,#fff,#f6f0ff); 
+  padding:12px 18px; 
+  border-radius:12px; 
+  font-weight:700; 
+  min-width:360px; 
+  text-align:center; 
+  box-shadow:0 8px rgba(0,0,0,0.06); 
+}
+
+/* Grupo com botão vermelho + cronômetro */
+.timer-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Botão vermelho "Parar Tudo" */
+.stop-btn {
+  background: #ff4b4b;
+  color: white;
+  border: none;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px rgba(0, 0, 0, 0.08);
+  transition: all 0.1s ease;
+}
+.stop-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Cronômetro */
+.timer-circle { 
+  width:72px; 
+  height:72px; 
+  border-radius:50%; 
+  background:var(--purple); 
+  color:white; 
+  font-weight:700; 
+  display:flex; 
+  align-items:center; 
+  justify-content:center; 
+  font-size:20px; 
+  box-shadow:0 8px rgba(0,0,0,0.08); 
+}
+
+/* ==========================================================================
+   BOTÃO a/A
+   ========================================================================== */
+#btnToggleCase {
+  background-color: var(--accent);
+  padding: 10px 18px;
+  border-radius: 10px;
+  color: white;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px rgba(0,0,0,0.08);
+  transition: all 0.1s ease;
+  font-size: 14px;
+  align-self: center;
+  margin-left: auto;
+}
+#btnToggleCase.active {
+  background-color: #5c33d6;
+  transform: translateY(-2px);
+  box-shadow: 0 8px rgba(0,0,0,0.12);
+}
+
+/* ==========================================================================
+   ESTILOS DO PLACAR (SCORE-BOARD)
+   ========================================================================== */
+.score-board {
+  width: 100%; 
+  max-width: 1100px; 
+  display: flex; 
+  justify-content: center; /* Centraliza os botões */
+  gap: 12px; 
+  margin-top: 18px; /* Espaçamento da seção anterior */
+  flex-wrap: wrap; /* Para lidar com telas menores */
+}
+
+.score-btn { 
+  padding: 12px 24px; 
+  border-radius: 10px; 
+  color: white; 
+  font-weight: 700; 
+  border: none; 
+  cursor: pointer; 
+  box-shadow: 0 6px rgba(0,0,0,0.1); 
+  transition: all 0.1s ease;
+  min-width: 120px; /* Garante que os botões tenham um tamanho decente */
+}
+
+/* Cor para Acertos (Verde) */
+.score-btn.success {
+  background: linear-gradient(0deg, #4CAF50, #81C784); /* Verde */
+}
+
+/* Cor para Erros (Vermelho) */
+.score-btn.error { 
+  background: linear-gradient(0deg, #F44336, #E57373); /* Vermelho */
+}
+
+/* Cor para Reiniciar (Amarelo) */
+.score-btn.reset { 
+  background: linear-gradient(0deg, #FFC107, #FFD54F); /* Amarelo */
+  color: #333; /* Texto escuro no botão amarelo */
+}
+
+.score-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 3px rgba(0, 0, 0, 0.1);
+}
+
+/* ==========================================================================
+   MEDIA QUERY — MODO MOBILE
+   ========================================================================== */
+@media (max-width: 900px){
+    body { padding: 8px; }
+    .key { width: 5.8vw; height: 5.8vw; font-size: 3.0vw; }
+    .row { gap: 2px; margin: 2px 0; }
+    .key.space { width: 38vw; }
+    .keyboard-panel { padding: 0.6vw; }
+    .display-box { font-size: 3.5vw; min-width: auto; padding: 2.5vw; }
+    .feedback { justify-content: center; }
+    .feedback .status {
+        padding: 1.7vw 2.5vw;
+        min-width: 70%;
+        max-width: 80%;
+        font-size: 2.5vw;
+        text-align: left;
+    }
+    #display { margin: 4px 0 4px 0; }
+    .mode-btn, .activity-btn {
+        font-size: 3.0vw;
+        padding: 2.0vw 3.5vw;
+    }
+    .timer-circle {
+        width: 8.5vw;
+        height: 8.5vw;
+        font-size: 3.5vw;
+    }
+    .timer-group { gap: 6px; }
+    .stop-btn {
+        padding: 1.8vw 3vw;
+        font-size: 2.8vw;
+        border-radius: 8px;
+    }
+
+    /* 👇 ESTILOS DE CORREÇÃO PARA O PLACAR (SCORE-BOARD) 👇 */
+    .score-board {
+        justify-content: space-between; 
+        gap: 4px; /* Reduz o gap entre botões */
+    }
+
+    .score-btn { 
+        min-width: unset; /* Remove o min-width fixo */
+        flex-grow: 1; /* Permite que ocupe o espaço disponível */
+        padding: 2.0vw 1.5vw; /* Ajusta o padding vertical/horizontal */
+        font-size: 2.8vw; /* Reduz o tamanho da fonte */
+    }
+}</style>
+
+</head>
+<body>
+
+<!-- BARRA SUPERIOR: Modos e Controles de Atividade -->
+<div class="topbar">
+  <div class="modes">
+    <button id="modeTalk" class="mode-btn active">🎵 Teclado Falante</button>
+    <button id="modeHunt" class="mode-btn">🎯 Letras / Números</button>
+    <button id="btnStop" class="mode-btn" style="background: linear-gradient(0deg, #ff6666, #ff8c8c);">⏹️ Parar</button>
+  </div>
+  <div class="controls-right">
+    <button id="btnLetters" class="activity-btn">Letras</button>
+    <button id="btnNumbers" class="activity-btn">Números</button>
+    <div id="timerCircle" class="timer-circle">10</div>
+  </div>
+</div>
+
+<!-- DISPLAY PRINCIPAL -->
+<div id="display">
+  <div class="display-box" id="mainDisplay">Você pressionou: —</div>
+</div>
+
+<!-- PAINEL DO TECLADO (Onde as teclas são injetadas via JS) -->
+<div class="keyboard-panel" id="keyboardPanel">
+  <div class="row" id="row1"></div>
+  <div class="row" id="row2"></div>
+  <div class="row" id="row3"></div>
+  <div class="row" id="row4"></div>
+  <div class="row" id="row5"></div>
+</div>
+
+<!-- BARRA DE FEEDBACK E STATUS -->
+<div class="feedback">
+  <div class="status" id="statusBox">Modo: Falante — Clique numa tecla ou use o teclado.</div>
+  <button id="btnToggleCase">A/a</button>   <div style="width:20px"></div>
+</div>
+
+<!-- BARRA DE placar -->
+<div class="score-board">
+  <button id="btnAcertos" class="score-btn success">Acertos: 0</button>
+  <button id="btnErros" class="score-btn error">Erros: 0</button>
+  <button id="btnReiniciar" class="score-btn reset">Reiniciar</button>
+</div>
+
+<!-- INPUT OCULTO PARA ATIVAR TECLADO VIRTUAL EM DISPOSITIVOS MÓVEIS -->
+<input type="text" id="hiddenInput" style="position:absolute;opacity:0;pointer-events:none;" >
+
+<script>
+
+// --- CÓDIGO DE SEGURANÇA COM MÚLTIPLAS CHAVES E VALIDADES ---
+
+// 1. CONFIGURAÇÃO DAS CHAVES
+//    Aqui você define quais chaves secretas são válidas e quantos dias de acesso cada uma concede.
+//    A "chave" é o texto que vai na URL (ex: ?key=SUA_CHAVE_SECRETA).
+//    O "valor" é o número de dias de validade.
+const CHAVES_VALIDAS = {
+  "TECLADO_SECRETO_2025": 366, // Chave principal, concede acesso por 1 ano.
+  "ACESSO_30_DIAS": 30         // Nova chave, concede acesso por 30 dias.
+};
+
+const CHAVE_ACESSO_LOCAL = "teclado_access_token"; // Nome do "token" que fica salvo no navegador.
+
+// 2. LEITURA DA URL
+//    Pega os parâmetros da URL para encontrar uma chave de acesso.
+//    Funciona com "?key=" ou "?chave=".
 const urlParams = new URLSearchParams(window.location.search);
 const chaveRecebida = urlParams.get('key') || urlParams.get('chave');
 
-let acessoValidado = false;
+let acessoValidado = false; // Começa como falso. Só se torna verdadeiro se a validação passar.
 
-// 1. TENTA VALIDAR PELO ARMAZENAMENTO LOCAL (ACESSOS SUBSEQUENTES)
+// 3. VALIDAÇÃO PELO ARMAZENAMENTO LOCAL (ACESSOS FUTUROS)
+//    Primeiro, tenta encontrar um token já salvo no navegador do usuário.
 try {
     const tokenSalvo = localStorage.getItem(CHAVE_ACESSO_LOCAL);
     if (tokenSalvo) {
         const dataExpiracao = new Date(JSON.parse(tokenSalvo).exp);
         
+        // Se a data de expiração do token ainda não passou, o acesso é liberado.
         if (dataExpiracao > new Date()) {
             acessoValidado = true;
         } else {
-            // Token expirado, remove e exige nova validação
+            // Se o token já expirou, ele é removido e o usuário precisará de uma nova chave.
             localStorage.removeItem(CHAVE_ACESSO_LOCAL); 
         }
     }
-} catch (e) {}
+} catch (e) {
+    // Ignora erros que possam ocorrer em navegadores muito antigos ou com configurações de privacidade rígidas.
+}
 
-// 2. SE NÃO VALIDADO, TENTA VALIDAR PELA CHAVE SECRETA (PRIMEIRO ACESSO)
-if (!acessoValidado) {
-    if (chaveRecebida === CHAVE_SECRETA_ESPERADA) {
+// 4. VALIDAÇÃO PELA CHAVE DA URL (PRIMEIRO ACESSO)
+//    Este bloco só executa se o usuário ainda não foi validado pelo token local.
+if (!acessoValidado && chaveRecebida) {
+    
+    // Verifica se a chave recebida na URL existe na nossa lista de CHAVES_VALIDAS.
+    if (Object.keys(CHAVES_VALIDAS).includes(chaveRecebida)) {
         
+        // Se a chave é válida, pega o número de dias correspondente a ela.
+        const diasDeValidade = CHAVES_VALIDAS[chaveRecebida];
+
         // ** SEGREDO: SALVAR O REGISTRO DO DISPOSITIVO **
+        // Calcula a data de expiração somando os dias de validade à data atual.
         const dataExpiracao = new Date();
-        dataExpiracao.setDate(dataExpiracao.getDate() + TEMPO_VALIDADE_DIAS);
+        dataExpiracao.setDate(dataExpiracao.getDate() + diasDeValidade);
+        
+        // Cria o token com a data de expiração e o salva no navegador do usuário.
         const novoToken = { validado: true, exp: dataExpiracao.toISOString() };
         localStorage.setItem(CHAVE_ACESSO_LOCAL, JSON.stringify(novoToken));
         
+        // Libera o acesso.
         acessoValidado = true;
-
-        // AÇÃO 3: LIMPEZA DA URL E RECARGA (REMOVIDO CÓDIGO DE RECARGA ANTIGO)
-        // A limpeza ocorrerá no bloco abaixo para evitar duplicação.
     }
 }
 
-// ----------------------------------------------------------------------
-// NOVO BLOCO: LIMPEZA DA URL (EXECUTAR SEMPRE QUE A CHAVE ESTIVER PRESENTE)
-// Esta lógica garante que a URL seja limpa *após* a validação, mesmo que
-// o acesso já estivesse validado pelo localStorage, mas a chave foi reenviada.
-// ----------------------------------------------------------------------
+// 5. LIMPEZA DA URL
+//    Este bloco é executado sempre que uma chave for detectada na URL, para removê-la.
+//    Isso impede que o usuário copie e compartilhe o link com a chave de acesso.
 if (chaveRecebida) {
     const url = new URL(window.location.href);
-    
-    // Constrói a URL limpa, usando apenas a origem, o caminho e o hash.
-    // Isso descarta completamente o search (?key=...) e qualquer outro parâmetro.
     const novaUrlLimpa = url.origin + url.pathname + url.hash; 
 
-    // Atualiza a URL no histórico SEM recarregar a página (Melhor UX)
+    // Atualiza a URL no histórico do navegador SEM recarregar a página.
     window.history.replaceState({}, document.title, novaUrlLimpa);
 
     console.log(`Chave detectada e removida da URL: ${chaveRecebida}`);
 }
 
 
-// 3. BLOQUEIO FINAL: SE AINDA NÃO VALIDOU, BLOQUEIA O JOGO.
+// 6. BLOQUEIO FINAL
+//    Após todas as tentativas de validação, se a variável 'acessoValidado' ainda for falsa,
+//    o acesso é bloqueado e o jogo não é carregado.
 if (!acessoValidado) {
     document.body.innerHTML = '<div style="text-align: center; padding-top: 50px;">' +
                                  '<h1>⛔ Acesso Negado</h1>' +
-                                 '<p>Conteúdo exclusivo. Acesse a lição na Hotmart para liberar o acesso.</p>' +
+                                 '<p>Conteúdo exclusivo. Utilize o link de acesso correto para liberar o teclado.</p>' +
                                  '</div>';
     
-    // Impede que o restante do script (código do jogo) seja executado
-    throw new Error('Acesso não autorizado. Chave inválida ou ausente.'); 
+    // Impede que o restante do script (código do jogo) seja executado.
+    throw new Error('Acesso não autorizado. Chave inválida, ausente ou expirada.'); 
 }
 
 // O restante do código do teclado será executado aqui SOMENTE se a chave for válida.
+
 // O seu código do teclado vem APÓS este bloco.
 
 /* ==========================================================================
@@ -1143,6 +1539,714 @@ statusBox.textContent='Modo: Falante — pressione uma tecla ou clique.';
 
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ==========================================================================
+   CONFIGURAÇÃO INICIAL E VARIÁVEIS
+   ========================================================================== */
+
+// Layout das teclas do teclado virtual
+const layout = [
+  ['1','2','3','4','5','6','7','8','9','0'],
+  ['Q','W','E','R','T','Y','U','I','O','P'],
+  ['A','S','D','F','G','H','J','K','L'],
+  ['Z','X','C','V','B','N','M'],
+  ];
+
+// Referências aos elementos DOM
+const keyboardPanel = document.getElementById('keyboardPanel');
+const rows = [
+  document.getElementById('row1'), 
+  document.getElementById('row2'), 
+  document.getElementById('row3'), 
+  document.getElementById('row4'), 
+  document.getElementById('row5')
+];
+const mainDisplay = document.getElementById('mainDisplay');
+const statusBox = document.getElementById('statusBox');
+const timerCircle = document.getElementById('timerCircle');
+const hiddenInput = document.getElementById('hiddenInput');
+// 💡 ADICIONE AS REFERÊNCIAS DO PLACAR AQUI 💡
+// Referências aos elementos DOM do placar
+const btnAcertos = document.getElementById('btnAcertos');
+const btnErros = document.getElementById('btnErros');
+const btnReiniciar = document.getElementById('btnReiniciar');
+// 💡 FIM DA ADIÇÃO 💡
+// Variáveis de estado
+let mode = 'talk'; // 'talk' (falante) ou 'hunt' (caça)
+let huntCategory = 'letters'; // 'letters' (letras) ou 'numbers' (números)
+let huntTarget = null; // A letra/número que o usuário deve encontrar no modo 'hunt'
+let timerSeconds = 10; // Tempo inicial do cronômetro
+let timerInterval = null; // ID do intervalo do cronômetro
+let voices = []; // Lista de vozes disponíveis
+let speakingVoice = null; // A voz selecionada para a fala (preferencialmente feminina em português)
+let isUpperCase = false; // Novo estado para controlar maiúsculas/minúsculas
+let isSpeaking = false; // ← Nova flag: indica se a voz está falando
+// Variáveis para o Placar
+let scoreHits = 0;
+let scoreMisses = 0;
+const keyElements = new Map(); // ← ADICIONE ESTA LINHA AQUI
+
+
+// Mapa de pronúncia para letras do alfabeto em português
+const pronunciaLetra = {
+  'A':'a','B':'bê','C':'cê','D':'dê','E':'é','F':'efe','G':'gê','H':'agá','I':'i','J':'jota',
+  'K':'cá','L':'éli','M':'eme','N':'ene','O':'Ó','P':'pê','Q':'quê','R':'erre','S':'ésse','T':'tê',
+  'U':'Ú!','V':'vê','W':'dáblio','X':'xis','Y':'ípsilon','Z':'zê' // Adicionado para consistência
+};
+const pronunciaNumero = {
+  '0':'zero', '1':'um', '2':'dois', '3':'três', '4':'quatro', 
+  '5':'cinco', '6':'seis', '7':'sete', '8':'oito', '9':'nove'
+};
+
+// Conjuntos de letras e números para o modo Caça
+const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const numbers = '0123456789'.split('');
+
+
+/* ==========================================================================
+   CRIAÇÃO DINÂMICA DO TECLADO
+   ========================================================================== */
+
+/**
+ * Cria ou atualiza as teclas do teclado virtual com base no estado `isUpperCase`.
+ */
+function createKeyboardKeys() {
+    layout.forEach((rowKeys, rowIndex) => {
+        const row = rows[rowIndex];
+        row.innerHTML = ''; // Limpa a linha antes de recriar as teclas
+
+        rowKeys.forEach(key => {
+            const btn = document.createElement('button');
+            btn.className = 'key';
+            // Define o texto da tecla: "Espaço" para 'Space', ou a própria letra/número
+            // *** AQUI USA o isUpperCase! ***
+            const displayKey = (key === 'Space') ? 'Espaço' : (isUpperCase ? key.toUpperCase() : key.toLowerCase());
+            btn.textContent = displayKey;    
+            if (key === 'Space') btn.classList.add('space');
+            btn.dataset.key = key; // Armazena o valor real da tecla para referência
+            // Adiciona o manipulador de evento de clique para a interação da tecla
+            btn.addEventListener('click', ()=> handleKeyInteraction(key));  
+            row.appendChild(btn);
+			keyElements.set(key.toUpperCase(), btn); // ← Aqui salva a referência
+        });
+    });
+}
+/**
+ * Aplica um efeito visual de 'pressionado' na tecla.
+ * @param {string} key - O valor da tecla (ex: 'A', '1', 'Space').
+ */
+function flashKey(key){
+  const el = keyElements.get(key.toUpperCase());
+  if(el){
+    el.classList.add('playing');
+    setTimeout(()=>el.classList.remove('playing'), 260);
+  }
+}
+
+
+
+/* ==========================================================================
+   SÍNTESE DE VOZ (SPEECH SYNTHESIS)
+   ========================================================================== */
+
+/**
+ * Carrega e seleciona a voz em Português (pt-BR).
+ */
+function loadVoices(){
+  // Filtra apenas vozes em português
+  voices = speechSynthesis.getVoices().filter(v => v.lang.startsWith('pt')); 
+  // Tenta encontrar uma voz feminina, senão usa a primeira disponível
+  speakingVoice = voices.find(v => v.name.toLowerCase().includes('female')) || voices[0] || null; 
+}
+// Recarrega as vozes quando o evento onvoiceschanged é disparado (necessário em alguns browsers)
+speechSynthesis.onvoiceschanged = loadVoices; 
+loadVoices(); // Chama na inicialização
+
+// 🔧 Correção — alguns navegadores demoram para carregar as vozes
+if (speechSynthesis.getVoices().length === 0) {
+  setTimeout(loadVoices, 500);
+}
+
+/**
+ * Faz a leitura do texto usando a voz selecionada.
+ * @param {string} text - O texto a ser falado.
+ * @param {object} opts - Opções de fala (pitch e rate).
+ */
+function speak(text, opts = {}) {
+  if(!('speechSynthesis' in window)) return;
+  
+  // Cancela qualquer fala anterior
+  speechSynthesis.cancel();
+
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'pt-BR';
+  if(speakingVoice) u.voice = speakingVoice;
+  u.pitch = opts.pitch ?? 1.8;
+  u.rate = opts.rate ?? 1.00;
+
+  // Marca como falando
+  isSpeaking = true;
+
+  // Quando terminar de falar, volta ao normal
+  u.onend = () => { isSpeaking = false; };
+
+  speechSynthesis.speak(u);
+}
+
+/* ==========================================================================
+   Geração de Sons (Beeps e Sucesso)
+   ========================================================================== */
+
+/**
+ * Toca um beep simples usando a Web Audio API.
+ * @param {number} freq - Frequência do som (Hz).
+ * @param {number} duration - Duração do som (ms).
+ */
+// Contexto global de áudio — evita recriar várias vezes (melhor desempenho)
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playBeep(freq = 1000, duration = 300){
+  try {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sine';
+    o.frequency.value = freq;
+    o.connect(g);
+    g.connect(audioCtx.destination);
+    g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.12, audioCtx.currentTime + 0.01);
+    o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration / 1000);
+    o.stop(audioCtx.currentTime + duration / 1000 + 0.02);
+  } catch(e){ 
+    console.error("Erro ao tocar beep:", e); 
+  }
+}
+
+
+/**
+ * Toca um som de sucesso (três tons ascendentes) usando a Web Audio API.
+ */
+/**
+ * Toca um som de erro (dois tons descendentes) usando a Web Audio API.
+ */
+function playError(){
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    const g = ctx.createGain();
+    g.connect(ctx.destination);
+    
+    // Toca dois tons descendentes (som de erro)
+    [440, 330].forEach((f,i)=>{
+      const o = ctx.createOscillator();
+      o.type='square'; // Onda quadrada para um som mais "duro"
+      o.frequency.value=f; 
+      o.connect(g);
+      // Inicia e para cada tom com um pequeno atraso
+      o.start(now+i*0.1); 
+      o.stop(now+i*0.1+0.15); 
+    });
+    setTimeout(()=> ctx.close(),500);
+  } catch(e){
+    console.error("Erro ao tocar erro:", e);
+  }
+}
+
+function playSuccess(){
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    const g = ctx.createGain();
+    g.connect(ctx.destination);
+    
+    // Toca 5 tons diferentes em sequência festiva (mais notas para comemoração)
+    [660, 784, 880, 1047, 1320].forEach((f,i)=>{
+      const o = ctx.createOscillator();
+      o.type='sine'; o.frequency.value=f; o.connect(g);
+      // Inicia e para cada tom com um pequeno atraso
+      o.start(now+i*0.07); 
+      o.stop(now+i*0.07+0.1); // Duração ligeiramente maior
+    });
+    setTimeout(()=> ctx.close(),500);
+  } catch(e){
+    console.error("Erro ao tocar sucesso:", e);
+  }
+}
+
+
+/* ==========================================================================
+   LÓGICA DO CRONÔMETRO
+   ========================================================================== */
+
+/**
+ * Inicia o cronômetro regressivo.
+ */
+function startTimer(){
+  clearInterval(timerInterval); // Limpa qualquer intervalo anterior
+  let t = timerSeconds;
+  timerCircle.textContent = t;
+  timerInterval = setInterval(()=>{
+    t--; 
+    timerCircle.textContent = t;
+    if(t<=0){ 
+      clearInterval(timerInterval); 
+      onTimerEnd(); // Ação quando o tempo acaba
+    }
+  },1000);
+}
+
+/**
+ * Para o cronômetro e reseta o display.
+ */
+function stopTimer(){ 
+  clearInterval(timerInterval); 
+  timerCircle.textContent = timerSeconds; 
+}
+
+/**
+ * Executado quando o cronômetro chega a zero no modo Caça.
+ */
+function onTimerEnd() {
+  playBeep(1000, 400);
+
+  if (mode === 'hunt' && huntTarget !== null) {
+    let letraFala = pronunciaLetra[huntTarget] || huntTarget;
+
+    // Cancela falas anteriores com pequeno atraso
+    setTimeout(() => {
+      speechSynthesis.cancel();
+
+      // Cria a fala e aguarda o término
+      const u = new SpeechSynthesisUtterance(`O tempo acabou! A resposta era ${letraFala}.`);
+      u.lang = 'pt-BR';
+      u.rate = 1;
+      u.pitch = 1;
+      u.onend = () => {
+        // Só gera o próximo alvo depois que a fala termina
+        generateNextTarget();
+      };
+
+      speechSynthesis.speak(u);
+    }, 150);
+
+    statusBox.textContent = `Tempo esgotado! A resposta era: ${huntTarget}`;
+    mainDisplay.textContent = `Tente novamente: ${huntTarget}`;
+  }
+}
+
+
+/* ==========================================================================
+   LÓGICA DO MODO CAÇA (HUNT)
+   ========================================================================== */
+
+/**
+ * Escolhe um item aleatório da categoria atual (letras ou números).
+ * @param {string} cat - 'letters' ou 'numbers'.
+ * @returns {string} O item escolhido.
+ */
+function chooseRandomFromCategory(cat){
+  const source = cat === 'letters' ? letters : numbers;
+  return source[Math.floor(Math.random()*source.length)];
+}
+
+/**
+ * Gera um novo alvo para o usuário encontrar no modo Caça.
+ */
+function generateNextTarget(){
+  huntTarget = chooseRandomFromCategory(huntCategory);
+  announceTarget();
+}
+
+/**
+ * Anuncia o alvo atual (visual e por voz) e inicia o cronômetro.
+ */
+function announceTarget(){
+  mainDisplay.textContent = `Procure: ${huntTarget}`;
+  let letraFala = pronunciaLetra[huntTarget]||huntTarget;
+  
+  // Fala a instrução
+  if(huntCategory==='letters') speak(`Encontre a letra ${letraFala}`, {pitch:1.6});
+  else speak(`Encontre o número ${letraFala}`, {pitch:1.6});
+  
+  startTimer();
+}
+
+
+/* ==========================================================================
+   MANIPULADOR DE INTERAÇÃO DE TECLA (Clique ou Teclado Físico/Virtual)
+   ========================================================================== */
+
+/**
+ * Processa a interação do usuário com uma tecla.
+ * @param {string} rawKey - O valor da tecla pressionada (ex: 'A', 'Space').
+ */
+function handleKeyInteraction(rawKey) {
+  // 🧩 BLOQUEIO: ignora cliques enquanto a voz estiver falando
+  if (isSpeaking) return;
+
+  // Converte para string e normaliza
+  let displayKey = String(rawKey).trim();
+
+  // 🚫 IGNORA teclas inválidas, espaços e caracteres especiais
+  // Mantém apenas letras (A-Z, a-z) e números (0-9)
+  if (!/^[a-zA-Z0-9]$/.test(displayKey)) {
+    mainDisplay.textContent = `—`; // Mostra traço visual em vez do caractere
+    return;
+  }
+
+  mainDisplay.textContent = `Você pressionou: ${displayKey}`;
+  flashKey(rawKey); // Efeito visual
+
+  if (mode === 'talk') {
+    /* 🎙️ MODO FALANTE */
+    let fala = displayKey;
+
+    if (letters.includes(displayKey.toUpperCase())) {
+      fala = pronunciaLetra[displayKey.toUpperCase()] || displayKey;
+    } else if (numbers.includes(displayKey)) {
+  fala = pronunciaNumero[displayKey] || displayKey; // fala = 'quatro'
+}
+
+    speak(fala);
+    statusBox.textContent = `Modo: Falante — pressionou ${displayKey}`;
+  }
+
+  else if (mode === 'hunt') {
+    /* 🎯 MODO CAÇA */
+    if (!huntTarget) {
+      statusBox.textContent = 'Clique em Letras ou Números para iniciar.';
+      return;
+    }
+
+    let pressed = huntCategory === 'letters' ? displayKey.toUpperCase() : displayKey;
+
+    if (pressed === huntTarget) {
+      /* ✅ ACERTOU */
+      stopTimer();
+      playSuccess();
+      
+      // NOVO: Incrementa acertos
+      scoreHits++;
+      btnAcertos.textContent = `Acertos: ${scoreHits}`;
+      // FIM NOVO
+      
+      let letraFala = pronunciaLetra[huntTarget] || huntTarget;
+      const isTargetLetter = huntCategory === 'letters';
+      const tipoAlvo = isTargetLetter ? 'letra' : 'número';
+      const artigoAlvo = isTargetLetter ? 'a' : 'o';
+
+      setTimeout(() => {
+        speak(`Parabéns, você acertou ${artigoAlvo} ${tipoAlvo} ${letraFala}`);
+        mainDisplay.textContent = `🎉 Acertou: ${huntTarget} 🎉`;
+        statusBox.textContent = `Muito bem! Encontrou ${huntTarget}!`;
+
+        // Gera o próximo alvo após o feedback
+        setTimeout(() => generateNextTarget(), 3200);
+      }, 600);
+
+    } else {
+      /* ❌ ERROU */
+      playError();
+      stopTimer();
+      
+      // NOVO: Incrementa erros
+      scoreMisses++;
+      btnErros.textContent = `Erros: ${scoreMisses}`;
+      // FIM NOVO
+      
+      // Linha 83 (Corrigido e Reordenado)
+const isPressedLetter = letters.includes(displayKey.toUpperCase());
+const tipoErrado = isPressedLetter ? 'letra' : 'número';
+const artigoErrado = isPressedLetter ? 'a' : 'o';
+
+const falaErrado = isPressedLetter ? (pronunciaLetra[pressed] || pressed) : (pronunciaNumero[pressed] || pressed);
+const falaAlvo = huntCategory === 'letters' ? (pronunciaLetra[huntTarget] || huntTarget) : (pronunciaNumero[huntTarget] || huntTarget);
+
+const isTargetLetter = huntCategory === 'letters';
+const tipoAlvo = isTargetLetter ? 'letra' : 'número';
+const artigoAlvo = isTargetLetter ? 'a' : 'o';
+
+
+// Cria as falas
+const u1 = new SpeechSynthesisUtterance(`Você errou!`);
+const u2 = new SpeechSynthesisUtterance(`Você apertou ${artigoErrado} ${tipoErrado} ${falaErrado}`);
+const u3 = new SpeechSynthesisUtterance(`Agora procure ${artigoAlvo} ${tipoAlvo} ${falaAlvo} novamente`);
+
+// Configura as vozes
+[u1, u2, u3].forEach(u => {
+  u.lang = 'pt-BR';
+  if (speakingVoice) u.voice = speakingVoice;
+  u.rate = 1.0;
+  u.pitch = 1.2;
+});
+
+// Encadeia as falas (u1 → u2 → u3)
+u1.onend = () => speechSynthesis.speak(u2);
+u2.onend = () => speechSynthesis.speak(u3);
+u3.onend = () => {
+  isSpeaking = false;   // ✅ terminou de falar — libera cliques
+  startTimer();         // ⏱️ reinicia o cronômetro só depois da fala
+};
+
+// Inicia a fala
+speechSynthesis.cancel();
+isSpeaking = true;       // ✅ bloqueia teclas enquanto fala
+speechSynthesis.speak(u1);
+
+// Atualiza mensagens na tela
+statusBox.textContent = `Você apertou ${pressed}. Tente novamente: ${huntTarget}`;
+mainDisplay.textContent = `❌ Procure: ${huntTarget} ❌`;
+
+    }
+  }
+}
+
+
+
+/* ==========================================================================
+   FUNÇÃO DE PARADA GLOBAL
+   ========================================================================== */
+
+/**
+ * Para todas as atividades (fala, cronômetro, modo caça).
+ */
+function stopAllActivity(){
+  speechSynthesis.cancel();
+  stopTimer();
+  huntTarget = null; // Reseta o alvo do modo Caça
+  statusBox.textContent = 'Atividade Parada. Escolha um modo para recomeçar.';
+  mainDisplay.textContent = 'Você pressionou: —';
+}
+
+
+/* ==========================================================================
+   MANIPULADORES DE EVENTOS DE BOTÕES
+   ========================================================================== */
+
+/**
+ * Reseta a contagem de acertos e erros.
+ */
+function resetScore() {
+  scoreHits = 0;
+  scoreMisses = 0;
+  btnAcertos.textContent = `Acertos: ${scoreHits}`;
+  btnErros.textContent = `Erros: ${scoreMisses}`;
+  statusBox.textContent = 'Placar zerado. Comece a jogar!';
+  speak('Placar reiniciado', {pitch: 1.4, rate: 0.9});
+}
+
+// Evento: Reiniciar Placar
+btnReiniciar.addEventListener('click', resetScore);
+
+
+// Referências aos botões de controle
+const btnTalk = document.getElementById('modeTalk');
+const btnHunt = document.getElementById('modeHunt');
+const btnStop = document.getElementById('btnStop');
+const btnLetters = document.getElementById('btnLetters');
+const btnNumbers = document.getElementById('btnNumbers');
+const btnToggleCase = document.getElementById('btnToggleCase');
+
+// Evento: Alternar maiúsculas/minúsculas
+btnToggleCase.addEventListener('click', () => {
+  isUpperCase = !isUpperCase; // Inverte o estado
+  btnToggleCase.classList.toggle('active', isUpperCase);
+  createKeyboardKeys(); // Atualiza o teclado com o novo estado
+  btnToggleCase.textContent = isUpperCase ? 'A/a' : 'a/A'; // ← Adicione esta linha
+  hiddenInput.focus();
+});
+
+
+// Evento: Mudar para Modo Falante
+btnTalk.addEventListener('click', ()=>{
+  mode = 'talk'; 
+  btnTalk.classList.add('active'); 
+  btnHunt.classList.remove('active');
+  stopAllActivity();
+  statusBox.textContent = 'Modo: Falante — clique uma tecla (ou pressione no teclado).';
+  
+  // 🔊 Novo feedback sonoro por voz
+  speak('Modo falante ativado', {pitch: 1.4, rate: 0.9});
+  
+  // Força o foco no input oculto para abrir o teclado virtual em mobile
+  hiddenInput.focus(); 
+});
+
+// Evento: Mudar para Modo Caça
+btnHunt.addEventListener('click', ()=>{
+  mode='hunt'; 
+  btnHunt.classList.add('active'); 
+  btnTalk.classList.remove('active');
+  stopAllActivity();
+  statusBox.textContent='Modo: Caça — escolha Letras ou Números para começar.';
+  mainDisplay.textContent='Procure a letra / número';
+  // Força o foco no input oculto
+  hiddenInput.focus(); 
+});
+
+// Evento: Parar Tudo
+btnStop.addEventListener('click', stopAllActivity);
+
+// Evento: Iniciar Caça por Letras
+btnLetters.addEventListener('click', ()=>{
+  if(mode!=='hunt') btnHunt.click(); // Muda para o modo Caça se ainda não estiver
+  huntCategory='letters';
+  // Destaca o botão de Letras
+  btnLetters.style.background='#6f46f7'; 
+  btnNumbers.style.background='var(--purple)';
+  generateNextTarget(); // Gera o primeiro alvo
+  hiddenInput.focus(); 
+});
+
+// Evento: Iniciar Caça por Números
+btnNumbers.addEventListener('click', ()=>{
+  if(mode!=='hunt') btnHunt.click(); // Muda para o modo Caça se ainda não estiver
+  huntCategory='numbers';
+  // Destaca o botão de Números
+  btnNumbers.style.background='#6f46f7'; 
+  btnLetters.style.background='var(--purple)';
+  generateNextTarget(); // Gera o primeiro alvo
+  hiddenInput.focus(); 
+});
+
+
+/* ==========================================================================
+   MANIPULADORES DE TECLADO FÍSICO E VIRTUAL (MOBILE)
+   ========================================================================== */
+
+// Evento: Teclado Físico (Desktop)
+document.addEventListener('keydown', (e)=>{ 
+  let k=e.key; 
+  // Normaliza a tecla Espaço
+  if(k===' ') k='Space'; 
+  // Ignora teclas de modificação (Shift, Ctrl, Alt, etc.)
+  if(e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+  // Evita que o navegador execute a ação padrão (ex: rolar a página com a barra de espaço)
+  e.preventDefault(); 
+  
+  // Verifica se a tecla pressionada é uma que está no layout para evitar lixo
+  const keyExists = layout.flat().some(key => key.toLowerCase() === k.toLowerCase() || key === k);
+  if(keyExists) {
+  // Garante que a tecla seja maiúscula para bater com o layout e os mapas de pronúncia
+  handleKeyInteraction(k.toUpperCase()); 
+}
+});
+
+// Evento: Input Oculto (Teclado Virtual Mobile)
+hiddenInput.addEventListener('input', e => {
+  const val = e.target.value;
+  if (val) {
+    const lastChar = val[val.length - 1];
+    let processedChar;
+
+    // Corrigido: se o último caractere for espaço, converte para 'Space'
+    if (lastChar === ' ') {
+      processedChar = 'Space';
+    } else if (letters.includes(lastChar.toUpperCase())) {
+      processedChar = lastChar.toUpperCase();
+    } else {
+      processedChar = lastChar;
+    }
+
+    handleKeyInteraction(processedChar);
+    e.target.value = '';
+  }
+});
+
+/* ==========================================================================
+   LÓGICA DE FOCO E ATIVAÇÃO DO TECLADO VIRTUAL (MOBILE)
+   ========================================================================== */
+
+/**
+ * Verifica se o dispositivo é mobile.
+ * @returns {boolean} True se for um dispositivo móvel.
+ */
+function isMobileDevice() {
+    // Checa por userAgent (padrão) e por presença de touch points (para iPads modernos)
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+           (navigator.maxTouchPoints > 0 && screen.width <= 900);
+}
+
+/**
+ * Tenta focar o input oculto para forçar a abertura do teclado virtual no carregamento.
+ */
+function activateMobileKeyboard() {
+    if (isMobileDevice()) {
+        // O atraso é crucial para dar tempo ao browser de processar o carregamento e 
+        // garantir que o foco seja aplicado após a interação inicial do usuário.
+        setTimeout(() => {
+            // Tenta focar, mas a abertura do teclado ainda pode depender de um toque do usuário.
+            hiddenInput.focus(); 
+        }, 100); 
+    }
+}
+
+// Chame a função de ativação logo após a definição do script
+activateMobileKeyboard();
+
+// Foco no input ao tocar no display (Fallback e Manutenção de Foco)
+// Adiciona um listener no body para focar o input oculto em qualquer toque na tela
+document.body.addEventListener('touchstart', (e) => {
+    // Evita focar se o toque foi em um botão, para não interferir na navegação
+    if (!e.target.closest('button')) {
+        hiddenInput.focus();
+    }
+}, {passive: true});
+
+// O evento de click no display continua funcionando como fallback e para desktop
+mainDisplay.addEventListener('click', ()=> hiddenInput.focus());
+
+// Previne o "zoom" indesejado ao interagir com as teclas no celular (melhora UX)
+document.addEventListener('mousedown', (e)=>{ 
+  if(e.target.matches('.key')) e.preventDefault(); 
+});
+
+
+/* ==========================================================================
+   LÓGICA DE SUSPENSÃO DE ATIVIDADE
+   ========================================================================== */
+
+// Para todas as atividades quando a página se torna inativa (usuário muda de aba)
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    stopAllActivity();
+    statusBox.textContent = 'Página inativa. Atividade Suspensa.';
+  }
+});
+
+
+/* ==========================================================================
+   FINALIZAÇÃO E ESTADO INICIAL
+   ========================================================================== */
+
+// Configura o estado visual inicial do cronômetro e botões de atividade
+timerCircle.textContent=timerSeconds;
+btnLetters.style.background='var(--purple)'; // Cor padrão
+btnNumbers.style.background='var(--purple)'; // Cor padrão
+statusBox.textContent='Modo: Falante — pressione uma tecla ou clique.';
+
+</script>
+
+</body>
+</html>
+
 
 
 
